@@ -1,0 +1,31 @@
+# Use the official Maven image to build the application
+FROM maven:3.8.6-openjdk-17 AS build
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the pom.xml and source code to the container
+COPY pom.xml .
+COPY src ./src
+
+# Package the application
+RUN mvn clean package -DskipTests
+
+# Use the official OpenJDK image to run the application
+FROM openjdk:17-jdk-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the packaged jar file from the build stage
+COPY --from=build /app/target/Lab2-0.0.1-SNAPSHOT.jar app.jar
+
+# Expose the application port (default Spring Boot port)
+EXPOSE 8080
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
+#Run and build
+#docker build -t lab2-app .
+#docker run -p 8080:8080 lab2-app
