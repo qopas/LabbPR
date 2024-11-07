@@ -4,7 +4,6 @@ import java.net.*;
 public class TCPServer {
     private static final int PORT = 12345;
     private static final String FILE_PATH = "sharedfile.txt";
-    private static volatile boolean isWriting = false; // Volatile flag to indicate if writing is in progress
 
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -60,23 +59,8 @@ public class TCPServer {
             }
         }
 
-        private void handleWriteCommand(String message) {
-            // Polling approach to check if a write operation is in progress
-            synchronized (TCPServer.class) { // Ensure synchronized access to the isWriting flag
-                while (isWriting) {
-                    try {
-                        System.out.println("Another write is in progress. Waiting...");
-                        output.println("Error: Another write is in progress. Please wait.");
-                        Thread.sleep(500); // Wait for a while before checking again
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-
-                // Mark that a write operation is in progress
-                isWriting = true;
-            }
-
+        private synchronized void handleWriteCommand(String message) {
+            // Only one thread can execute this method at a time
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH, true))) {
                 System.out.println("Writing message: " + message); // Log the message being written
                 writer.write(message);
@@ -86,27 +70,11 @@ public class TCPServer {
             } catch (IOException e) {
                 e.printStackTrace();
                 output.println("Error writing to file.");
-            } finally {
-                // Mark that the write operation is complete
-                synchronized (TCPServer.class) {
-                    isWriting = false;
-                }
             }
         }
 
-        private void handleReadCommand() {
-            // Polling approach to check if a write operation is in progress
-            while (isWriting) {
-                try {
-                    System.out.println("Waiting for write operation to finish...");
-                    output.println("Waiting for the current write operation to finish...");
-                    Thread.sleep(500); // Wait for a while before checking again
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            // Proceed with reading the file
+        private synchronized void handleReadCommand() {
+            // Proceed with reading the file (no synchronization needed)
             try (BufferedReader fileReader = new BufferedReader(new FileReader(FILE_PATH))) {
                 String line;
                 output.println("File content:");
